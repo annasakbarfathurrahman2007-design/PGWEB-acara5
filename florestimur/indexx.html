@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="utf-8" />
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0" />
+
+    <title>Leaflet JS</title>
+
+
+    <!-- =====================================================
+         LEAFLET CSS
+    ====================================================== -->
+
+    <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
+
+
+    <style>
+
+        html,
+        body {
+
+            width: 100%;
+            height: 100%;
+
+            margin: 0;
+            padding: 0;
+
+        }
+
+
+        #map {
+
+            width: 100%;
+            height: 100vh;
+
+        }
+
+
+        /* =====================================================
+           POPUP
+        ====================================================== */
+
+        .popup-image {
+
+            width: 200px;
+
+            max-height: 150px;
+
+            object-fit: cover;
+
+            border-radius: 8px;
+
+            margin-top: 8px;
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =====================================================
+         MAP
+    ====================================================== -->
+
+    <div id="map"></div>
+
+
+    <!-- =====================================================
+         JQUERY
+    ====================================================== -->
+
+    <script
+        src="https://code.jquery.com/jquery-3.7.1.min.js">
+    </script>
+
+
+    <!-- =====================================================
+         LEAFLET JS
+    ====================================================== -->
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin="">
+    </script>
+
+
+    <script>
+
+
+        // =====================================================
+        // INISIALISASI PETA
+        // =====================================================
+
+        var map = L.map("map").setView(
+
+            [-8.3555810, 122.9935381],
+
+            10
+
+        );
+
+
+        // =====================================================
+        // BASEMAP
+        // =====================================================
+
+        var basemap = L.tileLayer(
+
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+
+            {
+
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+            }
+
+        );
+
+
+        basemap.addTo(map);
+
+
+        // =====================================================
+        // ICON MARKER
+        // =====================================================
+
+        var homeIcon = L.icon({
+
+            iconUrl:
+                "images/home_marker.png",
+
+            iconSize:
+                [48, 48],
+
+            iconAnchor:
+                [24, 48],
+
+            popupAnchor:
+                [0, -48],
+
+            tooltipAnchor:
+                [-16, -30]
+
+        });
+
+
+        // =====================================================
+        // GEOJSON POINT TOPONIMI
+        // =====================================================
+
+        var toponimi = L.geoJSON(null, {
+
+
+            // =================================================
+            // MARKER
+            // =================================================
+
+            pointToLayer:
+                function(feature, latlng) {
+
+                    return L.marker(
+
+                        latlng,
+
+                        {
+
+                            icon:
+                                homeIcon
+
+                        }
+
+                    );
+
+                },
+
+
+            // =================================================
+            // ONEACHFEATURE
+            // =================================================
+
+            onEachFeature:
+                function(feature, layer) {
+
+                    var properties =
+                        feature.properties || {};
+
+
+                    // -----------------------------------------
+                    // NAMA TOPONIMI
+                    // -----------------------------------------
+
+                    var nama =
+                        properties.TOPONIMI ||
+                        properties.toponimi ||
+                        properties.NAMA ||
+                        properties.NAMA_UNSUR ||
+                        "Tidak tersedia";
+
+
+                    // -----------------------------------------
+                    // KECAMATAN
+                    // -----------------------------------------
+
+                    var kecamatan =
+                        properties.WADMKC ||
+                        properties.KECAMATAN ||
+                        properties.kecamatan ||
+                        "Tidak tersedia";
+
+
+                    // -----------------------------------------
+                    // KOORDINAT
+                    // -----------------------------------------
+
+                    var koordinat =
+
+                        feature.geometry.coordinates[1]
+                        + ", " +
+
+                        feature.geometry.coordinates[0];
+
+
+                    // -----------------------------------------
+                    // GAMBAR
+                    // -----------------------------------------
+
+                    var gambar = "";
+
+
+                    if (
+                        properties.image &&
+                        properties.image !== ""
+                    ) {
+
+                        gambar =
+
+                            "<br>" +
+
+                            "<img " +
+
+                            "src='images/" +
+                            properties.image +
+                            "' " +
+
+                            "class='popup-image' " +
+
+                            "alt='" +
+                            nama +
+                            "'>";
+
+                    }
+
+
+                    // -----------------------------------------
+                    // POPUP
+                    // -----------------------------------------
+
+                    var popup_content =
+
+                        "<b>Informasi Toponimi</b>" +
+
+                        "<br><br>" +
+
+                        "<b>Nama:</b> " +
+
+                        nama +
+
+                        "<br>" +
+
+                        "<b>Kecamatan:</b> " +
+
+                        kecamatan +
+
+                        "<br>" +
+
+                        "<b>Koordinat:</b> " +
+
+                        koordinat +
+
+                        gambar;
+
+
+                    // -----------------------------------------
+                    // POPUP LANGSUNG KE LAYER
+                    // -----------------------------------------
+
+                    layer.bindPopup(
+
+                        popup_content
+
+                    );
+
+
+                    // -----------------------------------------
+                    // TOOLTIP
+                    // -----------------------------------------
+
+                    layer.bindTooltip(
+
+                        nama,
+
+                        {
+
+                            direction:
+                                "top",
+
+                            sticky:
+                                true
+
+                        }
+
+                    );
+
+                }
+
+        });
+
+
+        // =====================================================
+        // LOAD TOPONIMI
+        // =====================================================
+
+        $.getJSON(
+
+            "GEOJSON/toponimi.geojson",
+
+            function(data) {
+
+                console.log(
+                    "TOPONIMI BERHASIL DIMUAT"
+                );
+
+                console.log(data);
+
+
+                toponimi.addData(data);
+
+
+                map.addLayer(
+                    toponimi
+                );
+
+            }
+
+        ).fail(
+
+            function(xhr) {
+
+                console.error(
+                    "TOPONIMI GAGAL DIMUAT"
+                );
+
+                console.error(
+                    "Status:",
+                    xhr.status
+                );
+
+                console.error(
+                    xhr.responseText
+                );
+
+            }
+
+        );
+
+
+        // =====================================================
+        // GEOJSON POLYLINE JALAN
+        // =====================================================
+
+        var jalan = L.geoJSON(null, {
+
+
+            // =================================================
+            // STYLE JALAN
+            // =================================================
+
+            style:
+                function(feature) {
+
+                    return {
+
+                        color:
+                            "purple",
+
+                        opacity:
+                            1,
+
+                        weight:
+                            4
+
+                    };
+
+                },
+
+
+            // =================================================
+            // ONEACHFEATURE
+            // =================================================
+
+            onEachFeature:
+                function(feature, layer) {
+
+                    var properties =
+                        feature.properties || {};
+
+
+                    // -----------------------------------------
+                    // NAMA JALAN
+                    // -----------------------------------------
+
+                    var namaJalan =
+
+                        properties.NAMA_UNSUR ||
+
+                        properties.nama ||
+
+                        properties.NAMA ||
+
+                        "Jalan";
+
+
+                    // -----------------------------------------
+                    // PANJANG
+                    // -----------------------------------------
+
+                    var panjang =
+
+                        properties.panjang_km ||
+
+                        "Tidak tersedia";
+
+
+                    // -----------------------------------------
+                    // POPUP
+                    // -----------------------------------------
+
+                    var popup_content =
+
+                        "<b>Informasi Jalan</b>" +
+
+                        "<br><br>" +
+
+                        "<b>Fungsi:</b> " +
+
+                        namaJalan +
+
+                        "<br>" +
+
+                        "<b>Panjang (km):</b> " +
+
+                        panjang;
+
+
+                    // -----------------------------------------
+                    // POPUP
+                    // -----------------------------------------
+
+                    layer.bindPopup(
+
+                        popup_content
+
+                    );
+
+
+                    // -----------------------------------------
+                    // TOOLTIP JALAN
+                    // -----------------------------------------
+
+                    layer.bindTooltip(
+
+                        namaJalan,
+
+                        {
+
+                            direction:
+                                "auto",
+
+                            sticky:
+                                true
+
+                        }
+
+                    );
+
+
+                    // -----------------------------------------
+                    // HOVER JALAN
+                    // -----------------------------------------
+
+                    layer.on({
+
+                        mouseover:
+                            function(e) {
+
+                                e.target.setStyle({
+
+                                    weight:
+                                        7,
+
+                                    opacity:
+                                        1
+
+                                });
+
+                            },
+
+
+                        mouseout:
+                            function(e) {
+
+                                jalan.resetStyle(
+
+                                    e.target
+
+                                );
+
+                            }
+
+                    });
+
+                }
+
+        });
+
+
+        // =====================================================
+        // LOAD JALAN
+        // =====================================================
+
+        $.getJSON(
+
+            "GEOJSON/jalan_geojson.geojson",
+
+            function(data) {
+
+                console.log(
+                    "JALAN BERHASIL DIMUAT"
+                );
+
+                console.log(data);
+
+
+                jalan.addData(data);
+
+
+                map.addLayer(
+                    jalan
+                );
+
+            }
+
+        ).fail(
+
+            function(xhr) {
+
+                console.error(
+                    "JALAN GAGAL DIMUAT"
+                );
+
+                console.error(
+                    "Status:",
+                    xhr.status
+                );
+
+                console.error(
+                    xhr.responseText
+                );
+
+            }
+
+        );
+
+
+        // =====================================================
+        // GEOJSON POLYGON JUMLAH PENDUDUK
+        // =====================================================
+
+        var jumlah_penduduk = L.geoJSON(null, {
+
+
+            // =================================================
+            // STYLE
+            // =================================================
+
+            style:
+                function(feature) {
+
+                    var jumlah =
+
+                        Number(
+
+                            feature.properties
+                                .Sheet1_Penduduk
+
+                        ) || 0;
+
+
+                    // -----------------------------------------
+                    // 0 - 15.000
+                    // -----------------------------------------
+
+                    if (
+                        jumlah <= 15000
+                    ) {
+
+                        return {
+
+                            color:
+                                "gray",
+
+                            opacity:
+                                1,
+
+                            weight:
+                                1,
+
+                            fillColor:
+                                "#ffffb2",
+
+                            fillOpacity:
+                                0.7
+
+                        };
+
+                    }
+
+
+                    // -----------------------------------------
+                    // 15.001 - 30.000
+                    // -----------------------------------------
+
+                    else if (
+                        jumlah <= 30000
+                    ) {
+
+                        return {
+
+                            color:
+                                "gray",
+
+                            opacity:
+                                1,
+
+                            weight:
+                                1,
+
+                            fillColor:
+                                "#fd8d3c",
+
+                            fillOpacity:
+                                0.7
+
+                        };
+
+                    }
+
+
+                    // -----------------------------------------
+                    // > 30.000
+                    // -----------------------------------------
+
+                    else {
+
+                        return {
+
+                            color:
+                                "gray",
+
+                            opacity:
+                                1,
+
+                            weight:
+                                1,
+
+                            fillColor:
+                                "#bd0026",
+
+                            fillOpacity:
+                                0.7
+
+                        };
+
+                    }
+
+                },
+
+
+            // =================================================
+            // ONEACHFEATURE
+            // =================================================
+
+            onEachFeature:
+                function(feature, layer) {
+
+                    var properties =
+                        feature.properties || {};
+
+
+                    // -----------------------------------------
+                    // NAMA KECAMATAN
+                    // -----------------------------------------
+
+                    var kecamatan =
+
+                        properties.WADMKC ||
+
+                        properties.KECAMATAN ||
+
+                        properties.kecamatan ||
+
+                        "Tidak tersedia";
+
+
+                    // -----------------------------------------
+                    // JUMLAH PENDUDUK
+                    // -----------------------------------------
+
+                    var jumlah =
+
+                        Number(
+
+                            properties.Sheet1_Penduduk
+
+                        ) || 0;
+
+
+                    // -----------------------------------------
+                    // POPUP
+                    // -----------------------------------------
+
+                    var popup_content =
+
+                        "<b>Informasi Kecamatan</b>" +
+
+                        "<br><br>" +
+
+                        "<b>Kecamatan:</b> " +
+
+                        kecamatan +
+
+                        "<br>" +
+
+                        "<b>Jumlah Penduduk:</b> " +
+
+                        jumlah.toLocaleString(
+                            "id-ID"
+                        ) +
+
+                        " jiwa";
+
+
+                    // -----------------------------------------
+                    // POPUP
+                    // -----------------------------------------
+
+                    layer.bindPopup(
+
+                        popup_content
+
+                    );
+
+
+                    // -----------------------------------------
+                    // TOOLTIP
+                    // -----------------------------------------
+
+                    layer.bindTooltip(
+
+                        kecamatan,
+
+                        {
+
+                            direction:
+                                "auto",
+
+                            sticky:
+                                true
+
+                        }
+
+                    );
+
+
+                    // -----------------------------------------
+                    // HOVER KECAMATAN
+                    // -----------------------------------------
+
+                    layer.on({
+
+                        mouseover:
+                            function(e) {
+
+                                e.target.setStyle({
+
+                                    weight:
+                                        3,
+
+                                    color:
+                                        "black",
+
+                                    fillOpacity:
+                                        0.85
+
+                                });
+
+                            },
+
+
+                        mouseout:
+                            function(e) {
+
+                                jumlah_penduduk
+                                    .resetStyle(
+                                        e.target
+                                    );
+
+                            }
+
+                    });
+
+                }
+
+        });
+
+
+        // =====================================================
+        // LOAD JUMLAH PENDUDUK
+        // =====================================================
+
+        $.getJSON(
+
+            "GEOJSON/jumlah_penduduk.geojson",
+
+            function(data) {
+
+                console.log(
+                    "JUMLAH PENDUDUK BERHASIL DIMUAT"
+                );
+
+                console.log(data);
+
+
+                jumlah_penduduk.addData(
+                    data
+                );
+
+
+                map.addLayer(
+                    jumlah_penduduk
+                );
+
+
+                // ---------------------------------------------
+                // OTOMATIS ZOOM KE DATA
+                // ---------------------------------------------
+
+                var bounds =
+                    jumlah_penduduk.getBounds();
+
+
+                if (
+                    bounds.isValid()
+                ) {
+
+                    map.fitBounds(
+                        bounds
+                    );
+
+                }
+
+            }
+
+        ).fail(
+
+            function(xhr) {
+
+                console.error(
+                    "JUMLAH PENDUDUK GAGAL DIMUAT"
+                );
+
+                console.error(
+                    "Status:",
+                    xhr.status
+                );
+
+                console.error(
+                    xhr.responseText
+                );
+
+            }
+
+        );
+
+
+        // =====================================================
+        // CONTROL LAYER
+        // =====================================================
+
+        var baseMaps = {
+
+            "OpenStreetMap":
+                basemap
+
+        };
+
+
+        var overlayMaps = {
+
+            "Toponimi":
+                toponimi,
+
+            "Jalan":
+                jalan,
+
+            "Jumlah Penduduk":
+                jumlah_penduduk
+
+        };
+
+
+        var controllayer =
+
+            L.control.layers(
+
+                baseMaps,
+
+                overlayMaps,
+
+                {
+
+                    collapsed:
+                        false
+
+                }
+
+            );
+
+
+        controllayer.addTo(map);
+
+
+    </script>
+
+</body>
+
+</html>

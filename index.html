@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Peta Flores Timur</title>
+
+    <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        .popup-img {
+            width: 220px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .legend {
+            background: white;
+            padding: 10px 12px;
+            line-height: 22px;
+            border-radius: 6px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 7px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+
+        // =====================================================
+        // PETA
+        // =====================================================
+
+        var map = L.map("map").setView(
+            [-8.35, 122.99],
+            10
+        );
+
+
+        // =====================================================
+        // BASEMAP
+        // =====================================================
+
+        var basemap = L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                attribution:
+                    "&copy; OpenStreetMap contributors"
+            }
+        ).addTo(map);
+
+
+        // =====================================================
+        // ICON MARKER
+        // =====================================================
+
+        var homeIcon = L.icon({
+
+            iconUrl: "images/home_marker.png",
+
+            iconSize: [48, 48],
+
+            iconAnchor: [24, 48],
+
+            popupAnchor: [0, -45],
+
+            tooltipAnchor: [0, -45]
+
+        });
+
+
+        // =====================================================
+        // TOPONIMI
+        // =====================================================
+
+        var toponimi = L.geoJSON(null, {
+
+            pointToLayer: function (feature, latlng) {
+
+                return L.marker(latlng, {
+                    icon: homeIcon
+                });
+
+            },
+
+            onEachFeature: function (feature, layer) {
+
+                var p = feature.properties || {};
+
+                var nama =
+                    p.TOPONIMI ||
+                    "Tidak tersedia";
+
+                var jenis =
+                    p.NAMA_UNSUR ||
+                    "Tidak tersedia";
+
+                var gambar = "";
+
+                if (p.image) {
+
+                    gambar =
+                        "<br><img class='popup-img' src='images/" +
+                        p.image +
+                        "'>";
+
+                }
+
+                layer.bindTooltip(
+                    nama,
+                    {
+                        sticky: true,
+                        direction: "top"
+                    }
+                );
+
+                layer.bindPopup(
+                    "<b>Informasi Toponimi</b><br><br>" +
+                    "<b>Nama:</b> " +
+                    nama +
+                    "<br>" +
+                    "<b>Jenis:</b> " +
+                    jenis +
+                    gambar
+                );
+
+            }
+
+        });
+
+
+        // =====================================================
+        // JALAN
+        // =====================================================
+
+        var jalan = L.geoJSON(null, {
+
+            style: function () {
+
+                return {
+
+                    color: "purple",
+
+                    weight: 5,
+
+                    opacity: 0.9
+
+                };
+
+            },
+
+            onEachFeature: function (feature, layer) {
+
+                var p =
+                    feature.properties || {};
+
+                var namaJalan =
+                    p.NAMA_UNSUR ||
+                    "Jalan tidak tersedia";
+
+                var panjang =
+                    p.panjang_km ||
+                    "Tidak tersedia";
+
+                layer.bindTooltip(
+                    namaJalan,
+                    {
+                        sticky: true,
+                        direction: "auto"
+                    }
+                );
+
+                layer.bindPopup(
+                    "<b>Informasi Jalan</b><br><br>" +
+                    "<b>Nama/Jenis:</b> " +
+                    namaJalan +
+                    "<br>" +
+                    "<b>Panjang:</b> " +
+                    panjang +
+                    " km"
+                );
+
+            }
+
+        });
+
+
+        // =====================================================
+        // LAYER JUMLAH PENDUDUK
+        // =====================================================
+
+        var jumlah_penduduk = L.geoJSON(null);
+
+        var batasRendah = 0;
+
+        var batasSedang = 0;
+
+
+        // =====================================================
+        // MENCARI FIELD JUMLAH PENDUDUK
+        // =====================================================
+
+        function getPenduduk(properties) {
+
+            var field = null;
+
+            var keys = Object.keys(properties);
+
+
+            // Prioritas field yang paling mungkin
+            var prioritas = [
+
+                "Sheet1_Penduduk",
+
+                "jumlah_penduduk",
+
+                "JUMLAH_PENDUDUK",
+
+                "Jumlah_Penduduk",
+
+                "PENDUDUK",
+
+                "penduduk",
+
+                "jumlah",
+
+                "JUMLAH"
+
+            ];
+
+
+            // Cari field berdasarkan prioritas
+            for (
+                var i = 0;
+                i < prioritas.length;
+                i++
+            ) {
+
+                if (
+                    properties[prioritas[i]] !== undefined &&
+                    properties[prioritas[i]] !== null
+                ) {
+
+                    field =
+                        prioritas[i];
+
+                    break;
+
+                }
+
+            }
+
+
+            // Jika belum ditemukan,
+            // cari berdasarkan nama field
+            if (!field) {
+
+                for (
+                    var j = 0;
+                    j < keys.length;
+                    j++
+                ) {
+
+                    var namaField =
+                        keys[j].toLowerCase();
+
+                    if (
+                        namaField.includes("penduduk") ||
+                        namaField.includes("population")
+                    ) {
+
+                        field =
+                            keys[j];
+
+                        break;
+
+                    }
+
+                }
+
+            }
+
+
+            // Jika field tidak ditemukan
+            if (!field) {
+
+                return 0;
+
+            }
+
+
+            var nilai =
+                properties[field];
+
+
+            // Jika angka
+            if (
+                typeof nilai === "number"
+            ) {
+
+                return nilai;
+
+            }
+
+
+            // Jika teks
+            if (
+                typeof nilai === "string"
+            ) {
+
+                nilai =
+                    nilai
+                    .trim()
+                    .replace(/\s/g, "")
+                    .replace(/\./g, "")
+                    .replace(",", ".");
+
+                return Number(nilai) || 0;
+
+            }
+
+
+            return 0;
+
+        }
+
+
+        // =====================================================
+        // WARNA JUMLAH PENDUDUK
+        // =====================================================
+
+        function warnaPenduduk(jumlah) {
+
+            if (
+                jumlah <= batasRendah
+            ) {
+
+                return "#ffffb2";
+
+            }
+
+            if (
+                jumlah <= batasSedang
+            ) {
+
+                return "#fd8d3c";
+
+            }
+
+            return "#bd0026";
+
+        }
+
+
+        // =====================================================
+        // LOAD JUMLAH PENDUDUK
+        // =====================================================
+
+        $.getJSON(
+            "GEOJSON/jumlah_penduduk.geojson",
+            function (data) {
+
+                var daftarPenduduk = [];
+
+
+                // Ambil semua jumlah penduduk
+                data.features.forEach(
+                    function (feature) {
+
+                        var jumlah =
+                            getPenduduk(
+                                feature.properties
+                            );
+
+                        if (jumlah > 0) {
+
+                            daftarPenduduk.push(
+                                jumlah
+                            );
+
+                        }
+
+                    }
+                );
+
+
+                // Urutkan
+                daftarPenduduk.sort(
+                    function (a, b) {
+
+                        return a - b;
+
+                    }
+                );
+
+
+                // =================================================
+                // BAGI 3 KELAS
+                // =================================================
+
+                if (
+                    daftarPenduduk.length > 0
+                ) {
+
+                    batasRendah =
+                        daftarPenduduk[
+                            Math.floor(
+                                daftarPenduduk.length / 3
+                            )
+                        ];
+
+                    batasSedang =
+                        daftarPenduduk[
+                            Math.floor(
+                                daftarPenduduk.length * 2 / 3
+                            )
+                        ];
+
+                }
+
+
+                // =================================================
+                // MASUKKAN DATA KE LAYER
+                // =================================================
+
+                data.features.forEach(
+                    function (feature) {
+
+                        var jumlah =
+                            getPenduduk(
+                                feature.properties
+                            );
+
+                        var kecamatan =
+                            feature.properties.WADMKC ||
+                            feature.properties.WADMKD ||
+                            "Tidak tersedia";
+
+
+                        var layer =
+                            L.geoJSON(
+                                feature,
+                                {
+
+                                    style: {
+
+                                        color: "#444",
+
+                                        weight: 1,
+
+                                        fillColor:
+                                            warnaPenduduk(
+                                                jumlah
+                                            ),
+
+                                        fillOpacity:
+                                            0.65
+
+                                    }
+
+                                }
+                            );
+
+
+                        // =================================================
+                        // TOOLTIP
+                        // =================================================
+
+                        layer.bindTooltip(
+                            kecamatan,
+                            {
+                                sticky: true,
+                                direction: "auto"
+                            }
+                        );
+
+
+                        // =================================================
+                        // POPUP
+                        // =================================================
+
+                        layer.bindPopup(
+
+                            "<b>Data Jumlah Penduduk</b>" +
+
+                            "<br><br>" +
+
+                            "<b>Kecamatan:</b> " +
+                            kecamatan +
+
+                            "<br>" +
+
+                            "<b>Jumlah Penduduk:</b> " +
+
+                            jumlah.toLocaleString(
+                                "id-ID"
+                            ) +
+
+                            " jiwa"
+
+                        );
+
+
+                        // =================================================
+                        // HOVER
+                        // =================================================
+
+                        layer.on(
+                            "mouseover",
+                            function (e) {
+
+                                e.target.setStyle({
+
+                                    weight: 3,
+
+                                    color: "#000",
+
+                                    fillOpacity: 0.9
+
+                                });
+
+                            }
+                        );
+
+
+                        layer.on(
+                            "mouseout",
+                            function (e) {
+
+                                e.target.setStyle({
+
+                                    weight: 1,
+
+                                    color: "#444",
+
+                                    fillColor:
+                                        warnaPenduduk(
+                                            jumlah
+                                        ),
+
+                                    fillOpacity: 0.65
+
+                                });
+
+                            }
+                        );
+
+
+                        jumlah_penduduk.addLayer(
+                            layer
+                        );
+
+                    }
+                );
+
+
+                // =================================================
+                // TAMPILKAN LAYER
+                // =================================================
+
+                jumlah_penduduk.addTo(map);
+
+            }
+        ).fail(
+            function () {
+
+                console.error(
+                    "Gagal membaca GEOJSON/jumlah_penduduk.geojson"
+                );
+
+            }
+        );
+
+
+        // =====================================================
+        // LOAD TOPONIMI
+        // =====================================================
+
+        $.getJSON(
+            "GEOJSON/toponimi.geojson",
+            function (data) {
+
+                toponimi.addData(data);
+
+                toponimi.addTo(map);
+
+            }
+        );
+
+
+        // =====================================================
+        // LOAD JALAN
+        // =====================================================
+
+        $.getJSON(
+            "GEOJSON/jalan_geojson.geojson",
+            function (data) {
+
+                jalan.addData(data);
+
+                jalan.addTo(map);
+
+            }
+        );
+
+
+        // =====================================================
+        // CONTROL LAYER
+        // =====================================================
+
+        var overlayMaps = {
+
+            "Toponimi":
+                toponimi,
+
+            "Jalan":
+                jalan,
+
+            "Jumlah Penduduk":
+                jumlah_penduduk
+
+        };
+
+
+        L.control.layers(
+
+            null,
+
+            overlayMaps,
+
+            {
+
+                collapsed: false,
+
+                position: "topright"
+
+            }
+
+        ).addTo(map);
+
+
+        // =====================================================
+        // LEGENDA
+        // =====================================================
+
+        var legend =
+            L.control({
+                position: "bottomright"
+            });
+
+
+        legend.onAdd =
+            function () {
+
+                var div =
+                    L.DomUtil.create(
+                        "div",
+                        "legend"
+                    );
+
+                div.innerHTML =
+
+                    "<b>Jumlah Penduduk</b><br>" +
+
+                    "<i style='background:#ffffb2'></i>" +
+                    " Rendah<br>" +
+
+                    "<i style='background:#fd8d3c'></i>" +
+                    " Sedang<br>" +
+
+                    "<i style='background:#bd0026'></i>" +
+                    " Tinggi";
+
+                return div;
+
+            };
+
+
+        legend.addTo(map);
+
+    </script>
+
+</body>
+
+</html>
